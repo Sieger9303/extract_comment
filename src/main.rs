@@ -635,7 +635,7 @@ fn main() {
         if record.len() < 10 {
             continue;
         }
-        let new_crate_name=record.get(1).unwrap().to_string();
+        let new_crate_name=record.get(1).unwrap().to_string().replace('_', "-");
         let function_safety=record.get(12).unwrap();
         let item_id=record.get(0).unwrap().to_string();
         let def_path = record.get(3).unwrap().to_string();
@@ -704,6 +704,7 @@ fn main() {
                     let target_crate_path=cache_root.join(&crate_name);
                     if !target_crate_path.exists() || !target_crate_path.is_dir() {
                         println!("crate name{:?} does not exit or is not a dir", &crate_name);
+
                     }
                      let mut zip_path: Option<PathBuf> = None;
                     let mut target_crate_file_count=0;
