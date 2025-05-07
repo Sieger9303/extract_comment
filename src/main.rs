@@ -411,7 +411,7 @@ fn find_foreign_function (item:&ForeignItem,target_line: usize)-> Option<Functio
             }
         },*/
         //ForeignItem::Verbatim(token_stream) => todo!(),
-        _ => todo!(),
+        _ => {},
     }
 }
 
@@ -456,7 +456,7 @@ fn find_function_item(item:&Item,target_line: usize) ->Option<FunctionMacroType>
                         }
                     },*/
                     ///ForeignItem::Verbatim(token_stream) => todo!(),
-                    _ => todo!(),
+                    _ => {},
                 }
             }
             return None;
@@ -484,7 +484,7 @@ fn find_function_item(item:&Item,target_line: usize) ->Option<FunctionMacroType>
                         }*/
                     },
                     syn::ImplItem::Verbatim(token_stream) => {},
-                    _ => todo!(),
+                    _ => {},
                 }
             }
             return None;
@@ -647,9 +647,10 @@ fn main() {
     //let mut crate_name_path_map:HashMap<String, String> = HashMap::new();
     let mut all_extracted_function_num=0;
     let mut failed_extract_record_count=0;
+    let mut extract_index=0;
     for result in rdr.records() {
-        all_extracted_function_num+=1;
-        println!("all_extracted_function_num: {}",&all_extracted_function_num);
+        extract_index+=1;
+        println!("extract_index: {}",&extract_index);
         let record = result.expect("Error reading CSV record");
         if record.len() < 10 {
             continue;
@@ -706,6 +707,7 @@ fn main() {
         if (!function_safety.eq("Safe")){
             continue;
         }
+        all_extracted_function_num+=1;
         if !new_crate_name.eq(&crate_name){
 
             //let new_package=crate_list_map.get(&new_crate_name);
