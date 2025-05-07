@@ -619,6 +619,7 @@ fn main() {
     let cache_root=Path::new(&args[2]);
     let result_root=Path::new(&args[3]);
     let  fail_result_root=result_root.join("records_failed_to_extract.csv");
+    let fail_reason_path=result_root.join("records_failed_reason.txt");
     //let crate_list_data = fs::read_to_string(crate_list).expect("cannot read crate_list file");
     // 2. 反序列化到 Root
     //let crate_list_root: Root = serde_json::from_str(&crate_list_data).expect("cannot deserialize crate list");
@@ -647,6 +648,8 @@ fn main() {
     let mut all_extracted_function_num=0;
     let mut failed_extract_record_count=0;
     for result in rdr.records() {
+        all_extracted_function_num+=1;
+        println!("all_extracted_function_num: {}",&all_extracted_function_num);
         let record = result.expect("Error reading CSV record");
         if record.len() < 10 {
             continue;
@@ -674,6 +677,22 @@ fn main() {
             match new_rel_file_p.to_str(){
                 Some(new_rel_file_string) => {rel_file=new_rel_file_string.to_owned()},
                 None =>{
+                    let failed_reason_file = OpenOptions::new()
+                        .create(true)    // 不存在就创建
+                        .append(true)    // 以追加模式，不会截断
+                        .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+                    let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+                    let failed_reason_string=format!(
+                        "new relfile is empty informantion: {} {} failed_extract_record_count {}",
+                        &new_crate_name,
+                        &rel_file,
+                        &failed_extract_record_count
+                    );
+                    failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                        .expect("failed to write string to file");
+                    failed_reason_buf.write_all(b"\n")
+                        .expect("failed to write newline");
+                    failed_reason_buf.flush().expect("failed to flush buffer");
                     write_when_fail(&fail_result_root, &record);
                     failed_extract_record_count+=1;
                     println!("failed_extract_record_count: {}",&failed_extract_record_count);
@@ -687,7 +706,6 @@ fn main() {
         if (!function_safety.eq("Safe")){
             continue;
         }
-        all_extracted_function_num+=1;
         if !new_crate_name.eq(&crate_name){
 
             //let new_package=crate_list_map.get(&new_crate_name);
@@ -751,6 +769,22 @@ fn main() {
                         new_crate_name=newcratename;
                         target_crate_path=target_crate_path2.clone();
                         if !target_crate_path2.exists() || !target_crate_path2.is_dir() {
+                            let failed_reason_file = OpenOptions::new()
+                            .create(true)    // 不存在就创建
+                            .append(true)    // 以追加模式，不会截断
+                            .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+                            let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+                            let failed_reason_string=format!(
+                                "cannot find crate_name target crate path informantion: {} {} failed_extract_record_count {}",
+                                &new_crate_name,
+                                &rel_file,
+                                &failed_extract_record_count
+                            );
+                            failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                                .expect("failed to write string to file");
+                            failed_reason_buf.write_all(b"\n")
+                                .expect("failed to write newline");
+                            failed_reason_buf.flush().expect("failed to flush buffer");
                             write_when_fail(&fail_result_root, &record);
                             failed_extract_record_count+=1;
                             println!("failed_extract_record_count: {}",&failed_extract_record_count);
@@ -832,6 +866,23 @@ fn main() {
         let file_path: PathBuf = Path::new(&crate_root).join(&rel_file);
         println!("extract: {} {} {:?}", def_path,&crate_root,&file_path);
         if !file_path.exists(){
+            let failed_reason_file = OpenOptions::new()
+            .create(true)    // 不存在就创建
+            .append(true)    // 以追加模式，不会截断
+            .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+            let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+            let failed_reason_string=format!(
+                "file path does not exist information: {} {} {:?} \nfailed_extract_record_count {}",
+                &crate_name,
+                &rel_file,
+                &file_path,
+                &failed_extract_record_count
+            );
+            failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                .expect("failed to write string to file");
+            failed_reason_buf.write_all(b"\n")
+                .expect("failed to write newline");
+            failed_reason_buf.flush().expect("failed to flush buffer");
             write_when_fail(&fail_result_root, &record);
             failed_extract_record_count+=1;
             println!("failed_extract_record_count: {}",&failed_extract_record_count);
@@ -841,9 +892,36 @@ fn main() {
             .unwrap_or_else(|e| panic!("Failed to read file {:?}: {}", file_path, e));
 
         // 使用 syn 解析文件
-        let ast: File = syn::parse_str(&source)
-            .unwrap_or_else(|e| panic!("Failed to parse file {:?}: {}", file_path, e));
 
+        let ast: File = match syn::parse_str(&source) {
+            Ok(file) => file,
+            Err(e) => {
+                //println!("Failed to parse file {:?}: {}", file_path, e);
+                let failed_reason_file = OpenOptions::new()
+                .create(true)    // 不存在就创建
+                .append(true)    // 以追加模式，不会截断
+                .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+                let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+                let failed_reason_string=format!(
+                    "Failed to parse file {:?}:{}\n {} {} \nfailed_extract_record_count {}",
+                    &file_path,
+                    &e,
+                    &crate_name,
+                    &rel_file,
+                    &failed_extract_record_count
+                );
+                failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                    .expect("failed to write string to file");
+                failed_reason_buf.write_all(b"\n")
+                    .expect("failed to write newline");
+                failed_reason_buf.flush().expect("failed to flush buffer");
+
+                write_when_fail(&fail_result_root, &record);
+                failed_extract_record_count += 1;
+                println!("failed_extract_record_count: {}", failed_extract_record_count);
+                continue;
+            }
+        };
         // 尝试根据 CSV 提供的起始行号查找目标函数
         let mut extracted_start_line:usize=0;
         let mut extracted_end_line:usize=0;
@@ -912,6 +990,24 @@ fn main() {
                 "unknown".to_string()
             };*/
             //panic!("Failed to find_function_by_start_line {} {} {}",def_path,rel_file,start_line);
+            let failed_reason_file = OpenOptions::new()
+            .create(true)    // 不存在就创建
+            .append(true)    // 以追加模式，不会截断
+            .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+            let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+            let failed_reason_string=format!(
+                "Failed to find function by strat line {} {:?} {}\n failed_extract_record_count {}",
+                &crate_name,
+                &file_path,
+                &start_line,
+                &failed_extract_record_count
+            );
+            failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                .expect("failed to write string to file");
+            failed_reason_buf.write_all(b"\n")
+                .expect("failed to write newline");
+            failed_reason_buf.flush().expect("failed to flush buffer");
+
             write_when_fail(&fail_result_root, &record);
             failed_extract_record_count+=1;
             println!("failed_extract_record_count: {}",&failed_extract_record_count);
