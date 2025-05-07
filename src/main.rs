@@ -11,10 +11,11 @@ use std::env;
 use std::fs;
 use std::fs::OpenOptions;
 use std::fs::ReadDir;
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::io::Write;
 
-use csv::ReaderBuilder;
+use csv::{ReaderBuilder, StringRecord, WriterBuilder};
 use serde::Serialize;
 use syn::token::Impl;
 use syn::ForeignItem;
@@ -588,6 +589,7 @@ struct Package {
     version: String,
 }
 
+//fn write_when_fail(output:&PathBuf,)
 fn main() {
     // 程序参数:
     // args[1]:CSV 文件路径（记录中包含目标函数信息）
@@ -603,7 +605,7 @@ fn main() {
     //let crate_list = Path::new(&args[2]);
     let cache_root=Path::new(&args[2]);
     let result_root=Path::new(&args[3]);
-
+    let  fail_result_root=result_root.join("records_failed_to_extract.csv");
     //let crate_list_data = fs::read_to_string(crate_list).expect("cannot read crate_list file");
     // 2. 反序列化到 Root
     //let crate_list_root: Root = serde_json::from_str(&crate_list_data).expect("cannot deserialize crate list");
@@ -630,6 +632,7 @@ fn main() {
     let mut crate_root=String::new();
     //let mut crate_name_path_map:HashMap<String, String> = HashMap::new();
     let mut all_extracted_function_num=0;
+    let mut failed_extract_record_count=0;
     for result in rdr.records() {
         let record = result.expect("Error reading CSV record");
         if record.len() < 10 {
@@ -702,7 +705,6 @@ fn main() {
                     println!("the dir does not exist {:?}", &now_crate_root_path);
                 }                
             }
-            crate_name=new_crate_name;
             //match crate_name_path_map.get(&crate_name){
                 //Some(crate_root_path) => {crate_root=crate_root_path.clone();},
                 //None =>{
@@ -711,7 +713,7 @@ fn main() {
                         println!("crate name{:?} does not exit or is not a dir", &crate_name);
 
                     }
-                     let mut zip_path: Option<PathBuf> = None;
+                    let mut zip_path: Option<PathBuf> = None;
                     let mut target_crate_file_count=0;
                     let read_target_crate_path_res = fs::read_dir(&target_crate_path);
                     let entries = match read_target_crate_path_res {
@@ -776,6 +778,7 @@ fn main() {
                         .unwrap_or_default();
                     let extracted_file_dir = target_crate_path.join(folder_name);
                     //println!("{:?}",&extracted_file_dir);
+                    crate_name=new_crate_name;
                     crate_root=extracted_file_dir.to_str().expect("failed tp convert extracted file path to string").to_owned();
                     //crate_name_path_map.insert(crate_name.clone(), crate_root.clone());
                 //}
@@ -783,7 +786,24 @@ fn main() {
         }
         //return 
         let file_path: PathBuf = Path::new(&crate_root).join(rel_file);
-        println!("extract: {} {} {:?}", def_path,&crate_root,file_path);
+        println!("extract: {} {} {:?}", def_path,&crate_root,&file_path);
+        if !file_path.exists(){
+            let failed_file = OpenOptions::new()
+            .create(true)    // 不存在就创建
+            .append(true)    // 以追加模式，不会截断
+            .open(&fail_result_root).expect("failed to open or create records_failed_to_extract.csv");
+            let buf = BufWriter::new(failed_file);
+            // 5. 使用 csv::Writer 从该 writer 写入单行
+            let mut wtr = WriterBuilder::new()
+                .has_headers(false)  // 不写入任何 header
+                .from_writer(buf);
+            // 6. 写入当前这条 record，并刷新
+            wtr.write_record(&record).expect("failed to write into bufwriter");
+            wtr.flush().expect("failed to flush bufwriter");
+            failed_extract_record_count+=1;
+            println!("failed_extract_record_count: {}",&failed_extract_record_count);
+            continue;
+        }
         let source = fs::read_to_string(&file_path)
             .unwrap_or_else(|e| panic!("Failed to read file {:?}: {}", file_path, e));
 
