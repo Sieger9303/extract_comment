@@ -589,7 +589,20 @@ struct Package {
     version: String,
 }
 
-//fn write_when_fail(output:&PathBuf,)
+fn write_when_fail(fail_result_root:&PathBuf, record:&StringRecord){
+    let failed_file = OpenOptions::new()
+    .create(true)    // 不存在就创建
+    .append(true)    // 以追加模式，不会截断
+    .open(&fail_result_root).expect("failed to open or create records_failed_to_extract.csv");
+    let buf = BufWriter::new(failed_file);
+    // 5. 使用 csv::Writer 从该 writer 写入单行
+    let mut wtr = WriterBuilder::new()
+        .has_headers(false)  // 不写入任何 header
+        .from_writer(buf);
+    // 6. 写入当前这条 record，并刷新
+    wtr.write_record(record).expect("failed to write into bufwriter");
+    wtr.flush().expect("failed to flush bufwriter");
+}
 fn main() {
     // 程序参数:
     // args[1]:CSV 文件路径（记录中包含目标函数信息）
@@ -642,10 +655,32 @@ fn main() {
         let function_safety=record.get(12).unwrap();
         let item_id=record.get(0).unwrap().to_string();
         let def_path = record.get(3).unwrap().to_string();
-        let rel_file = record.get(9).unwrap();
+        let mut rel_file = record.get(9).unwrap().to_string();
         let start_line: usize = record.get(10).unwrap().parse().unwrap_or_else(|e| {
             panic!("Failed to parse start line: {}", e)
         });
+        if rel_file.starts_with("/opt/rustwide/cargo-home/registry/src/index.crates.io-6f17d22bba15001f"){
+            let rel_file_p = Path::new(&rel_file);
+            // 迭代组件，跳过 registry_root 及其后的一个组件
+            let mut iter = rel_file_p.iter()
+                // 跳过所有在 registry_root 之前的组件
+                .skip_while(|c| *c!= std::ffi::OsStr::new("index.crates.io-6f17d22bba15001f"))
+                // 跳过 registry_root 本身
+                .skip(1)
+                // 再跳过那个 crate 目录
+                .skip(1);
+            // 收集余下部分
+            let new_rel_file_p: PathBuf = iter.collect();
+            match new_rel_file_p.to_str(){
+                Some(new_rel_file_string) => {rel_file=new_rel_file_string.to_owned()},
+                None =>{
+                    write_when_fail(&fail_result_root, &record);
+                    failed_extract_record_count+=1;
+                    println!("failed_extract_record_count: {}",&failed_extract_record_count);
+                    continue;
+                },
+            }
+        }
         //println!("{}",function_safety);
         println!("now function: {:?}", &record);
         println!("now function: {} {} {} {} {}", &item_id,&new_crate_name,&def_path,&rel_file,&start_line);
@@ -716,18 +751,7 @@ fn main() {
                         new_crate_name=newcratename;
                         target_crate_path=target_crate_path2.clone();
                         if !target_crate_path2.exists() || !target_crate_path2.is_dir() {
-                            let failed_file = OpenOptions::new()
-                            .create(true)    // 不存在就创建
-                            .append(true)    // 以追加模式，不会截断
-                            .open(&fail_result_root).expect("failed to open or create records_failed_to_extract.csv");
-                            let buf = BufWriter::new(failed_file);
-                            // 5. 使用 csv::Writer 从该 writer 写入单行
-                            let mut wtr = WriterBuilder::new()
-                                .has_headers(false)  // 不写入任何 header
-                                .from_writer(buf);
-                            // 6. 写入当前这条 record，并刷新
-                            wtr.write_record(&record).expect("failed to write into bufwriter");
-                            wtr.flush().expect("failed to flush bufwriter");
+                            write_when_fail(&fail_result_root, &record);
                             failed_extract_record_count+=1;
                             println!("failed_extract_record_count: {}",&failed_extract_record_count);
                             continue;
@@ -805,21 +829,10 @@ fn main() {
             //}
         }
         //return 
-        let file_path: PathBuf = Path::new(&crate_root).join(rel_file);
+        let file_path: PathBuf = Path::new(&crate_root).join(&rel_file);
         println!("extract: {} {} {:?}", def_path,&crate_root,&file_path);
         if !file_path.exists(){
-            let failed_file = OpenOptions::new()
-            .create(true)    // 不存在就创建
-            .append(true)    // 以追加模式，不会截断
-            .open(&fail_result_root).expect("failed to open or create records_failed_to_extract.csv");
-            let buf = BufWriter::new(failed_file);
-            // 5. 使用 csv::Writer 从该 writer 写入单行
-            let mut wtr = WriterBuilder::new()
-                .has_headers(false)  // 不写入任何 header
-                .from_writer(buf);
-            // 6. 写入当前这条 record，并刷新
-            wtr.write_record(&record).expect("failed to write into bufwriter");
-            wtr.flush().expect("failed to flush bufwriter");
+            write_when_fail(&fail_result_root, &record);
             failed_extract_record_count+=1;
             println!("failed_extract_record_count: {}",&failed_extract_record_count);
             continue;
@@ -898,7 +911,11 @@ fn main() {
             } else {
                 "unknown".to_string()
             };*/
-            panic!("Failed to find_function_by_start_line {} {} {}",def_path,rel_file,start_line);
+            //panic!("Failed to find_function_by_start_line {} {} {}",def_path,rel_file,start_line);
+            write_when_fail(&fail_result_root, &record);
+            failed_extract_record_count+=1;
+            println!("failed_extract_record_count: {}",&failed_extract_record_count);
+            continue;
             //("Failed to find_function_by_start_line".to_string(), Vec::new())
         };
 
@@ -918,7 +935,7 @@ fn main() {
         results.push(FunctionCommentStatus {
             crate_name:crate_name.clone(),
             def_path,
-            file:rel_file.to_string(),
+            file:rel_file,
             line:extracted_start_line,
             has_doc,
             doc_paragraph,
