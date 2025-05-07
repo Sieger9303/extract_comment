@@ -411,7 +411,7 @@ fn find_foreign_function (item:&ForeignItem,target_line: usize)-> Option<Functio
             }
         },*/
         //ForeignItem::Verbatim(token_stream) => todo!(),
-        _ => {},
+        _ => {return None;},
     }
 }
 
