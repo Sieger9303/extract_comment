@@ -638,7 +638,7 @@ fn main() {
         if record.len() < 10 {
             continue;
         }
-        let new_crate_name=record.get(1).unwrap().to_string().replace('_', "-");
+        let mut new_crate_name=record.get(1).unwrap().to_string();
         let function_safety=record.get(12).unwrap();
         let item_id=record.get(0).unwrap().to_string();
         let def_path = record.get(3).unwrap().to_string();
@@ -708,10 +708,30 @@ fn main() {
             //match crate_name_path_map.get(&crate_name){
                 //Some(crate_root_path) => {crate_root=crate_root_path.clone();},
                 //None =>{
-                    let target_crate_path=cache_root.join(&new_crate_name);
+                    let mut target_crate_path=cache_root.join(&new_crate_name);
+                    let newcratename=new_crate_name.replace("_", "-");
+                    let target_crate_path2=cache_root.join(&newcratename);
                     if !target_crate_path.exists() || !target_crate_path.is_dir() {
-                        println!("crate name{:?} does not exit or is not a dir", &new_crate_name);
-
+                        //println!("crate name{:?} does not exit or is not a dir", &new_crate_name);
+                        new_crate_name=newcratename;
+                        target_crate_path=target_crate_path2.clone();
+                        if !target_crate_path2.exists() || !target_crate_path2.is_dir() {
+                            let failed_file = OpenOptions::new()
+                            .create(true)    // 不存在就创建
+                            .append(true)    // 以追加模式，不会截断
+                            .open(&fail_result_root).expect("failed to open or create records_failed_to_extract.csv");
+                            let buf = BufWriter::new(failed_file);
+                            // 5. 使用 csv::Writer 从该 writer 写入单行
+                            let mut wtr = WriterBuilder::new()
+                                .has_headers(false)  // 不写入任何 header
+                                .from_writer(buf);
+                            // 6. 写入当前这条 record，并刷新
+                            wtr.write_record(&record).expect("failed to write into bufwriter");
+                            wtr.flush().expect("failed to flush bufwriter");
+                            failed_extract_record_count+=1;
+                            println!("failed_extract_record_count: {}",&failed_extract_record_count);
+                            continue;
+                        } 
                     }
                     let mut zip_path: Option<PathBuf> = None;
                     let mut target_crate_file_count=0;
