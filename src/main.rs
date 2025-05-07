@@ -708,9 +708,9 @@ fn main() {
             //match crate_name_path_map.get(&crate_name){
                 //Some(crate_root_path) => {crate_root=crate_root_path.clone();},
                 //None =>{
-                    let target_crate_path=cache_root.join(&crate_name);
+                    let target_crate_path=cache_root.join(&new_crate_name);
                     if !target_crate_path.exists() || !target_crate_path.is_dir() {
-                        println!("crate name{:?} does not exit or is not a dir", &crate_name);
+                        println!("crate name{:?} does not exit or is not a dir", &new_crate_name);
 
                     }
                     let mut zip_path: Option<PathBuf> = None;
