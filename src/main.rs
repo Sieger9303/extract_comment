@@ -644,6 +644,7 @@ fn main() {
             panic!("Failed to parse start line: {}", e)
         });
         //println!("{}",function_safety);
+        println!("now function: {:?}", &record);
         println!("now function: {} {} {} {} {}", &item_id,&new_crate_name,&def_path,&rel_file,&start_line);
         if (!function_safety.eq("Safe")){
             continue;
@@ -782,7 +783,7 @@ fn main() {
         }
         //return 
         let file_path: PathBuf = Path::new(&crate_root).join(rel_file);
-        println!("extract: {} {:?}", def_path, file_path);
+        println!("extract: {} {} {:?}", def_path,&crate_root,file_path);
         let source = fs::read_to_string(&file_path)
             .unwrap_or_else(|e| panic!("Failed to read file {:?}: {}", file_path, e));
 
