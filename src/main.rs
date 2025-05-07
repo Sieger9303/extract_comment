@@ -639,8 +639,12 @@ fn main() {
         let function_safety=record.get(12).unwrap();
         let item_id=record.get(0).unwrap().to_string();
         let def_path = record.get(3).unwrap().to_string();
+        let rel_file = record.get(9).unwrap();
+        let start_line: usize = record.get(10).unwrap().parse().unwrap_or_else(|e| {
+            panic!("Failed to parse start line: {}", e)
+        });
         //println!("{}",function_safety);
-        println!("now function: {} {} {} {}", &item_id,&new_crate_name,&def_path,&item_id);
+        println!("now function: {} {} {} {} {}", &item_id,&new_crate_name,&def_path,&rel_file,&start_line);
         if (!function_safety.eq("Safe")){
             continue;
         }
@@ -777,12 +781,8 @@ fn main() {
             //}
         }
         //return 
-        let rel_file = record.get(9).unwrap();
-        let start_line: usize = record.get(10).unwrap().parse().unwrap_or_else(|e| {
-            panic!("Failed to parse start line: {}", e)
-        });
-        println!("extract: {} {} {}", def_path, rel_file, start_line);
         let file_path: PathBuf = Path::new(&crate_root).join(rel_file);
+        println!("extract: {} {:?}", def_path, file_path);
         let source = fs::read_to_string(&file_path)
             .unwrap_or_else(|e| panic!("Failed to read file {:?}: {}", file_path, e));
 
