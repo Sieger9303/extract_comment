@@ -26,6 +26,8 @@ use syn::ImplItemMacro;
 use syn::ImplItemMethod;
 use syn::ItemMacro;
 use syn::ItemMacro2;
+use syn::TraitItemMacro;
+use syn::TraitItemMethod;
 use syn::{File, Item, ItemFn, spanned::Spanned};
 
 use walkdir::WalkDir;
@@ -50,67 +52,82 @@ struct FunctionCommentStatus {
 fn extract_doc_comments(func: &FunctionMacroType) -> Vec<String> {
     match func{
         FunctionMacroType::ItemFn(item_fn) => {
-                            item_fn.attrs
-                            .iter()
-                            .filter_map(|attr| {
-                                if attr.path.is_ident("doc") {
-                                    if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                                        if let syn::Lit::Str(lit) = meta.lit {
-                                            return Some(lit.value());
+                                item_fn.attrs
+                                .iter()
+                                .filter_map(|attr| {
+                                    if attr.path.is_ident("doc") {
+                                        if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
+                                            if let syn::Lit::Str(lit) = meta.lit {
+                                                return Some(lit.value());
+                                            }
                                         }
                                     }
-                                }
-                                None
-                            })
-                            .collect()
-                },
+                                    None
+                                })
+                                .collect()
+                    },
         FunctionMacroType::ForeignItemFn(foreign_item_fn) => {
-                    foreign_item_fn.attrs
-                    .iter()
-                    .filter_map(|attr| {
-                        if attr.path.is_ident("doc") {
-                            if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                                if let syn::Lit::Str(lit) = meta.lit {
-                                    return Some(lit.value());
+                        foreign_item_fn.attrs
+                        .iter()
+                        .filter_map(|attr| {
+                            if attr.path.is_ident("doc") {
+                                if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
+                                    if let syn::Lit::Str(lit) = meta.lit {
+                                        return Some(lit.value());
+                                    }
                                 }
                             }
-                        }
-                        None
-                    })
-                    .collect()
-                },
+                            None
+                        })
+                        .collect()
+                    },
         FunctionMacroType::ImplItemMethod(impl_item_method) => {
-                    impl_item_method.attrs
-                    .iter()
-                    .filter_map(|attr| {
-                        if attr.path.is_ident("doc") {
-                            if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                                if let syn::Lit::Str(lit) = meta.lit {
-                                    return Some(lit.value());
+                        impl_item_method.attrs
+                        .iter()
+                        .filter_map(|attr| {
+                            if attr.path.is_ident("doc") {
+                                if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
+                                    if let syn::Lit::Str(lit) = meta.lit {
+                                        return Some(lit.value());
+                                    }
                                 }
                             }
-                        }
-                        None
-                    })
-                    .collect()
-                },
+                            None
+                        })
+                        .collect()
+                    },
         FunctionMacroType::ItemMacro(item_macro) => {
-            item_macro.attrs
-            .iter()
-            .filter_map(|attr| {
-                if attr.path.is_ident("doc") {
-                    if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                        if let syn::Lit::Str(lit) = meta.lit {
-                            return Some(lit.value());
+                item_macro.attrs
+                .iter()
+                .filter_map(|attr| {
+                    if attr.path.is_ident("doc") {
+                        if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
+                            if let syn::Lit::Str(lit) = meta.lit {
+                                return Some(lit.value());
+                            }
                         }
                     }
-                }
-                None
-            })
-            .collect()
-        },
+                    None
+                })
+                .collect()
+            },
         FunctionMacroType::ItemMacro2(item_macro2) =>{
-            item_macro2.attrs
+                item_macro2.attrs
+                .iter()
+                .filter_map(|attr| {
+                    if attr.path.is_ident("doc") {
+                        if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
+                            if let syn::Lit::Str(lit) = meta.lit {
+                                return Some(lit.value());
+                            }
+                        }
+                    }
+                    None
+                })
+                .collect()
+            },
+        FunctionMacroType::TraitItemMethod(trait_item_method) => {
+            trait_item_method.attrs
             .iter()
             .filter_map(|attr| {
                 if attr.path.is_ident("doc") {
@@ -124,36 +141,6 @@ fn extract_doc_comments(func: &FunctionMacroType) -> Vec<String> {
             })
             .collect()
         },
-        /*FunctionMacroType::ForeignItemMacro(foreign_item_macro) => {
-            foreign_item_macro.attrs
-            .iter()
-            .filter_map(|attr| {
-                if attr.path.is_ident("doc") {
-                    if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                        if let syn::Lit::Str(lit) = meta.lit {
-                            return Some(lit.value());
-                        }
-                    }
-                }
-                None
-            })
-            .collect()
-        },
-        FunctionMacroType::ImplItemMacro(impl_item_macro) => {
-            impl_item_macro.attrs
-            .iter()
-            .filter_map(|attr| {
-                if attr.path.is_ident("doc") {
-                    if let Ok(syn::Meta::NameValue(meta)) = attr.parse_meta() {
-                        if let syn::Lit::Str(lit) = meta.lit {
-                            return Some(lit.value());
-                        }
-                    }
-                }
-                None
-            })
-            .collect()
-        },*/
     }
 }
 
@@ -385,6 +372,7 @@ enum FunctionMacroType {
     ItemMacro2(ItemMacro2),
     //ForeignItemMacro(ForeignItemMacro),
     //ImplItemMacro(ImplItemMacro),
+    TraitItemMethod(TraitItemMethod),
 }
 
 fn find_foreign_function (item:&ForeignItem,target_line: usize)-> Option<FunctionMacroType>{
@@ -532,7 +520,30 @@ fn find_function_item(item:&Item,target_line: usize) ->Option<FunctionMacroType>
         },
         //Item::Static(item_static) => {},
         //Item::Struct(item_struct) => {},
-        //Item::Trait(item_trait) => {},
+        Item::Trait(item_trait) => {
+            for traititem in &item_trait.items{
+                match traititem{
+                    syn::TraitItem::Const(trait_item_const) =>{
+
+                    },
+                    syn::TraitItem::Method(trait_item_method) => {
+                        let start_line = trait_item_method.span().start().line;
+                        let end_line=trait_item_method.span().end().line;
+                        if start_line <= target_line && end_line >=target_line  
+                        {
+                            return Some(FunctionMacroType::TraitItemMethod(trait_item_method.clone()));
+                        };
+                        return None;
+                    },
+                    syn::TraitItem::Type(trait_item_type) => {},
+                    syn::TraitItem::Macro(trait_item_macro) => {},
+                    syn::TraitItem::Verbatim(token_stream) => {},
+                    _ => {},
+                }
+                return None;
+            }
+            return None;
+        },
         //Item::TraitAlias(item_trait_alias) => {},
         //Item::Type(item_type) => {},
         //Item::Union(item_union) => {},
@@ -998,45 +1009,36 @@ fn main() {
             //println!("Success find ItemFn");
             let name = 
             match &func{
-                FunctionMacroType::ItemFn(item_fn) => 
-                    {
-                        extracted_start_line=item_fn.span().start().line;
-                        extracted_end_line=item_fn.span().end().line;
-                        item_fn.sig.ident.to_string()
-                    },
-                FunctionMacroType::ForeignItemFn(foreign_item_fn) => 
-                    {
-                        extracted_start_line=foreign_item_fn.span().start().line;
-                        extracted_end_line=foreign_item_fn.span().end().line;
-                        foreign_item_fn.sig.ident.to_string()
-                    },
-                FunctionMacroType::ImplItemMethod(impl_item_method) => 
-                    {
-                        extracted_start_line=impl_item_method.span().start().line;
-                        extracted_end_line=impl_item_method.span().end().line;
-                        impl_item_method.sig.ident.to_string()
-                    },
-                FunctionMacroType::ItemMacro(item_macro) => 
-                    {
-                        extracted_start_line=item_macro.span().start().line;
-                        extracted_end_line=item_macro.span().end().line;
-                        item_macro.ident.clone().map(|ident| ident.to_string()).unwrap_or_default()
-                    },
+                FunctionMacroType::ItemFn(item_fn) => {
+                    extracted_start_line=item_fn.span().start().line;
+                    extracted_end_line=item_fn.span().end().line;
+                    item_fn.sig.ident.to_string()
+                },
+                FunctionMacroType::ForeignItemFn(foreign_item_fn) => {
+                    extracted_start_line=foreign_item_fn.span().start().line;
+                    extracted_end_line=foreign_item_fn.span().end().line;
+                    foreign_item_fn.sig.ident.to_string()
+                },
+                FunctionMacroType::ImplItemMethod(impl_item_method) => {
+                    extracted_start_line=impl_item_method.span().start().line;
+                    extracted_end_line=impl_item_method.span().end().line;
+                    impl_item_method.sig.ident.to_string()
+                },
+                FunctionMacroType::ItemMacro(item_macro) => {
+                    extracted_start_line=item_macro.span().start().line;
+                    extracted_end_line=item_macro.span().end().line;
+                    item_macro.ident.clone().map(|ident| ident.to_string()).unwrap_or_default()
+                },
                 FunctionMacroType::ItemMacro2(item_macro2) =>{
                     extracted_start_line=item_macro2.span().start().line;
                     extracted_end_line=item_macro2.span().end().line;
                     item_macro2.ident.to_string()
                 },
-                //FunctionMacroType::ForeignItemMacro(foreign_item_macro) =>{
-                //    extracted_start_line=foreign_item_macro.span().start().line;
-                //    extracted_end_line=foreign_item_macro.span().end().line;
-                //    foreign_item_macro.ident.map(|ident| ident.to_string()).unwrap_or_default()
-                //},
-                //FunctionMacroType::ImplItemMacro(impl_item_macro) => {
-                //    extracted_start_line=impl_item_macro.span().start().line;
-                //    extracted_end_line=impl_item_macro.span().end().line;
-                //    impl_item_macro.ident.map(|ident| ident.to_string()).unwrap_or_default()
-                //},
+                FunctionMacroType::TraitItemMethod(trait_item_method) => {
+                    extracted_start_line=trait_item_method.span().start().line;
+                    extracted_end_line=trait_item_method.span().end().line;
+                    trait_item_method.sig.ident.to_string()
+                },
             };
             (name, extract_doc_comments(&func))
         } else {
