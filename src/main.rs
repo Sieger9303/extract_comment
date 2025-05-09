@@ -925,15 +925,23 @@ fn main() {
                 continue;
             }
             Err(panic_payload) => {
+                // 尝试将 panic_payload 解构为 &str
+                let panic_reason = panic_payload
+                    .downcast_ref::<&str>()
+                    .map(|s| *s)
+                    // 如果不是 &str，再试试 String
+                    .or_else(|| panic_payload.downcast_ref::<String>().map(|s| s.as_str()))
+                    .unwrap_or("Unknown panic payload type");
+
                 let failed_reason_file = OpenOptions::new()
                 .create(true)    // 不存在就创建
                 .append(true)    // 以追加模式，不会截断
                 .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
                 let mut failed_reason_buf = BufWriter::new(failed_reason_file);
                 let failed_reason_string=format!(
-                    "Failed to parse file panic when parsing{:?}\n {} {} \nfailed_extract_record_count {}",
+                    "Failed to parse file panic when parsing{:?} {}\n {} {} \nfailed_extract_record_count {}",
                     &file_path,
-                    //&parse_err,
+                    &panic_reason,
                     &crate_name,
                     &rel_file,
                     &failed_extract_record_count
