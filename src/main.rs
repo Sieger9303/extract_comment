@@ -666,6 +666,7 @@ fn main() {
     for result in rdr.records() {
         extract_index+=1;
         println!("extract_index: {}",&extract_index);
+        println!("all handled{} has doc{} has inline comment{}",allhandlecount,hasdocrecord,hascommentcount);
         let record = result.expect("Error reading CSV record");
         if record.len() < 10 {
             continue;
