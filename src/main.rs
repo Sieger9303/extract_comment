@@ -660,6 +660,9 @@ fn main() {
     let mut all_extracted_function_num=0;
     let mut failed_extract_record_count=0;
     let mut extract_index=0;
+    let mut allhandlecount=0;
+    let mut hasdocrecord=0;
+    let mut hascommentcount=0;
     for result in rdr.records() {
         extract_index+=1;
         println!("extract_index: {}",&extract_index);
@@ -1098,6 +1101,13 @@ fn main() {
         let inline_comment_paragraph = inline_comments.join(" ");
         println!("Success find normal comments");
 
+        if has_doc{
+            hasdocrecord+=1;
+        }
+        if has_inline_comment{
+            hascommentcount+=1;
+        }
+        allhandlecount+=1;
         results.push(FunctionCommentStatus {
             crate_name:crate_name.clone(),
             def_path,
@@ -1151,4 +1161,5 @@ fn main() {
     }     
 
     println!("extracted function count {}", all_extracted_function_num);
+    println!("all handled{} has doc{} has inline comment{}",allhandlecount,hasdocrecord,hascommentcount);
 }
