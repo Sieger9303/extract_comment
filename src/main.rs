@@ -14,6 +14,7 @@ use std::fs::ReadDir;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::io::Write;
+use std::panic::{catch_unwind, UnwindSafe};
 
 use csv::{ReaderBuilder, StringRecord, WriterBuilder};
 use serde::Serialize;
@@ -894,6 +895,62 @@ fn main() {
             .unwrap_or_else(|e| panic!("Failed to read file {:?}: {}", file_path, e));
 
         // 使用 syn 解析文件
+        // 使用 catch_unwind 包裹解析
+        let ast: File = match catch_unwind(|| syn::parse_str::<File>(&source)) {
+            // 闭包正常返回：可能是 Ok(ast) 或 Err(parse_error)
+            Ok(Ok(file)) => file,
+            Ok(Err(parse_err)) => {
+                let failed_reason_file = OpenOptions::new()
+                .create(true)    // 不存在就创建
+                .append(true)    // 以追加模式，不会截断
+                .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+                let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+                let failed_reason_string=format!(
+                    "Failed to parse file {:?}:{}\n {} {} \nfailed_extract_record_count {}",
+                    &file_path,
+                    &parse_err,
+                    &crate_name,
+                    &rel_file,
+                    &failed_extract_record_count
+                );
+                failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                    .expect("failed to write string to file");
+                failed_reason_buf.write_all(b"\n")
+                    .expect("failed to write newline");
+                failed_reason_buf.flush().expect("failed to flush buffer");
+
+                write_when_fail(&fail_result_root, &record);
+                failed_extract_record_count += 1;
+                println!("failed_extract_record_count: {}", failed_extract_record_count);
+                continue;
+            }
+            Err(panic_payload) => {
+                let failed_reason_file = OpenOptions::new()
+                .create(true)    // 不存在就创建
+                .append(true)    // 以追加模式，不会截断
+                .open(&fail_reason_path).expect("failed to open or create records_failed_to_extract.csv");
+                let mut failed_reason_buf = BufWriter::new(failed_reason_file);
+                let failed_reason_string=format!(
+                    "Failed to parse file panic when parsing{:?}\n {} {} \nfailed_extract_record_count {}",
+                    &file_path,
+                    //&parse_err,
+                    &crate_name,
+                    &rel_file,
+                    &failed_extract_record_count
+                );
+                failed_reason_buf.write_all(failed_reason_string.as_bytes())
+                    .expect("failed to write string to file");
+                failed_reason_buf.write_all(b"\n")
+                    .expect("failed to write newline");
+                failed_reason_buf.flush().expect("failed to flush buffer");
+
+                write_when_fail(&fail_result_root, &record);
+                failed_extract_record_count += 1;
+                println!("failed_extract_record_count: {}", failed_extract_record_count);
+                continue;
+            }
+        };
+
 
         let ast: File = match syn::parse_str(&source) {
             Ok(file) => file,
@@ -924,6 +981,7 @@ fn main() {
                 continue;
             }
         };
+
         // 尝试根据 CSV 提供的起始行号查找目标函数
         let mut extracted_start_line:usize=0;
         let mut extracted_end_line:usize=0;
