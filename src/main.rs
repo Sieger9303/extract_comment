@@ -533,14 +533,14 @@ fn find_function_item(item:&Item,target_line: usize) ->Option<FunctionMacroType>
                         {
                             return Some(FunctionMacroType::TraitItemMethod(trait_item_method.clone()));
                         };
-                        return None;
+                        //return None;
                     },
                     syn::TraitItem::Type(trait_item_type) => {},
                     syn::TraitItem::Macro(trait_item_macro) => {},
                     syn::TraitItem::Verbatim(token_stream) => {},
                     _ => {},
                 }
-                return None;
+                //return None;
             }
             return None;
         },
