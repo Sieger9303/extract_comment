@@ -663,13 +663,14 @@ fn main() {
     let mut allhandlecount=0;
     let mut hasdocrecord=0;
     let mut hascommentcount=0;
+    let mut has_doc_or_comment=0;
     for result in rdr.records() {
         extract_index+=1;
         println!("extract_index: {}",&extract_index);
         if (extract_index<33348){
             continue;
         }
-        println!("all handled{} has doc{} has inline comment{}",allhandlecount,hasdocrecord,hascommentcount);
+        println!("all handled{} has doc{} has inline comment{} has doc or comment {}",allhandlecount,hasdocrecord,hascommentcount,has_doc_or_comment);
         let record = result.expect("Error reading CSV record");
         if record.len() < 10 {
             continue;
@@ -1111,6 +1112,9 @@ fn main() {
         if has_inline_comment{
             hascommentcount+=1;
         }
+        if has_doc||has_inline_comment{
+            has_doc_or_comment+=1;
+        }
         allhandlecount+=1;
         results.push(FunctionCommentStatus {
             crate_name:crate_name.clone(),
@@ -1165,5 +1169,5 @@ fn main() {
     }     
 
     println!("extracted function count {}", all_extracted_function_num);
-    println!("all handled{} has doc{} has inline comment{}",allhandlecount,hasdocrecord,hascommentcount);
+    println!("all handled{} has doc{} has inline comment{} has doc or comment{}",allhandlecount,hasdocrecord,hascommentcount,has_doc_or_comment);
 }
